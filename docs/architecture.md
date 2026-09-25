@@ -1,8 +1,9 @@
 # Architecture: HDFC Fund Facts FAQ (RAG Prototype)
 
-**Source of truth:** [PRD.md](./PRD.md) only. Nothing in this document adds product, corpus, or stack beyond that PRD.  
+**Source of truth:** [PRD.md](./PRD.md) for product, corpus, and RAG.  
+**UI source of truth:** [Design/stitch_growchatbot_dark_ui_interface/](../Design/stitch_growchatbot_dark_ui_interface/) (Stitch). This replaces PRD §7 Streamlit.  
 **Type:** Local prototype. Single demo user. No auth, no hosting, no analytics.  
-**UI (PRD §7):** Streamlit. Not a separate ingest service.
+**UI:** Stitch HTML/CSS chat (`code.html` + `DESIGN.md`). Not Streamlit. Not a separate ingest service.
 
 ---
 
@@ -12,8 +13,8 @@ Closed-corpus RAG. Five Groww URLs in. One short, cited answer out — or a refu
 
 ```
                     ┌─────────────────────────────────────────┐
-                    │              Streamlit UI               │
-                    │  welcome · 3 example Qs · disclaimer    │
+                    │         Stitch UI (not Streamlit)       │
+                    │  GrowChatBot dark chat · 3 example Qs   │
                     │  “Facts-only. No investment advice.”    │
                     └───────────────────┬─────────────────────┘
                                         │ question
@@ -42,9 +43,27 @@ Offline / on-demand ingest (Phases 1–4)
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` |
 | Vector store | ChromaDB |
 | LLM | Mistral API |
-| UI | Streamlit |
+| UI | Stitch design — static HTML/CSS from `Design/stitch_growchatbot_dark_ui_interface/`. Not Streamlit. |
 
 There is no other data path.
+
+---
+
+## UI: Stitch design (replaces Streamlit)
+
+Implement the chat shell from the Stitch export. Do **not** use Streamlit.
+
+| Artifact | Path |
+|---|---|
+| Markup / layout | `Design/stitch_growchatbot_dark_ui_interface/code.html` |
+| Tokens, type, components | `Design/stitch_growchatbot_dark_ui_interface/DESIGN.md` |
+| Visual target | `Design/stitch_growchatbot_dark_ui_interface/screen.png` |
+
+**Must keep (PRD):** welcome, three example-question chips (expense ratio, ELSS lock-in, min SIP), disclaimer **“Facts-only. No investment advice.”**, chat input, session-only history, assistant envelope = answer text → one citation URL → `Last updated from sources:`.
+
+**Must match Stitch:** dark Groww-style terminal (`#070B12` / `#0D1322`), Plus Jakarta Sans + Inter, suggested chips, amber disclaimer bar, user vs assistant bubbles, bottom-anchored input. No extra nav, no fund picker.
+
+**Wiring:** the Stitch page sends the question to the existing retrieval backend (`answer_question`). Generation stays in Phase 6. Chat is session-only; nothing on disk; PII is not shown or stored.
 
 ---
 
@@ -148,7 +167,7 @@ There is no other data path.
 
 **Purpose:** From an allowed question, fetch the right chunks and produce the PRD answer shape — or refuse / abstain.
 
-Runs only after Streamlit accepts a question. Generation is in this phase because the PRD pipeline is retrieve → prompt (Mistral) → answer; there is no separate generate service.
+Runs only after the Stitch UI accepts a question. Generation is in this phase because the PRD pipeline is retrieve → prompt (Mistral) → answer; there is no separate generate service.
 
 ### 6.1 Before retrieve (guards)
 
@@ -177,8 +196,8 @@ Prompt rules (PRD):
 - Never invent expense ratios, dates, or returns.
 - Never give buy/sell advice even if the user slipped past the pre-guard.
 
-**Answer envelope (UI):**  
-`answer_text` → one citation URL → last-updated line.
+**Answer envelope (Stitch UI):**  
+`answer_text` → one citation URL → last-updated line. Render in the assistant bubble from the Stitch design (not Streamlit).
 
 If the user named no fund and chunks are mixed, prefer the clarify path over a blended answer.
 
@@ -241,4 +260,4 @@ Per PRD out of scope: other AMCs/funds, login/KYC/portfolio, calculators, adviso
 | 5 | Retrieval logic | Guards + top-k + Mistral envelope |
 | 6 | Retrieval testing | PRD §10 / §11 checklist green |
 
-M0 is these six phases plus the Streamlit shell in the PRD. That is the whole design.
+M0 is these six phases plus the Stitch UI shell (`code.html` / `DESIGN.md`). Streamlit is out of scope. That is the whole design.

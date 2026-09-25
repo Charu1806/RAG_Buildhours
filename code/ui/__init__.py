@@ -1,1 +1,1 @@
-# Streamlit UI for the HDFC fund facts prototype
+# Stitch HTML UI + /api/ask
