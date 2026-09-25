@@ -74,7 +74,7 @@ class Handler(BaseHTTPRequestHandler):
             body = {
                 "status": "error",
                 "answer_text": (
-                    "Could not generate an answer. Check MISTRAL_API_KEY in .env."
+                    "Could not generate an answer. Check ANTHROPIC_API_KEY in .env."
                     if "401" in str(exc) or "API Key" in str(exc)
                     else str(exc)
                 ),

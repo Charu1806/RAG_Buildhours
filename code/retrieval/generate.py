@@ -1,4 +1,4 @@
-"""Mistral generation from retrieved chunks only. Does not persist the question."""
+"""Anthropic Sonnet generation from retrieved chunks only. Does not persist the question."""
 
 from __future__ import annotations
 
@@ -9,26 +9,35 @@ from pathlib import Path
 from .retrieve import RetrievedChunk
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MODEL = "mistral-small-latest"
+DEFAULT_MODEL = "claude-sonnet-4-5"
 
 
-def _api_key() -> str:
-    key = os.environ.get("MISTRAL_API_KEY", "").strip()
-    if key:
-        return key
+def _env_value(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if value:
+        return value
     env_path = REPO_ROOT / ".env"
-    if env_path.is_file():
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            name, value = line.split("=", 1)
-            if name.strip() == "MISTRAL_API_KEY":
-                return value.strip().strip('"').strip("'")
+    if not env_path.is_file():
+        return ""
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, raw = line.split("=", 1)
+        if key.strip() == name:
+            return raw.strip().strip('"').strip("'")
     return ""
 
 
-def has_mistral_key() -> bool:
+def _api_key() -> str:
+    return _env_value("ANTHROPIC_API_KEY")
+
+
+def _model_name() -> str:
+    return _env_value("ANTHROPIC_MODEL") or DEFAULT_MODEL
+
+
+def has_llm_key() -> bool:
     return bool(_api_key())
 
 
@@ -42,15 +51,13 @@ def generate_answer(question: str, chunks: list[RetrievedChunk]) -> str:
     key = _api_key()
     if not key:
         raise RuntimeError(
-            "MISTRAL_API_KEY is not set. Use --retrieve-only to test retrieval, "
-            "or export MISTRAL_API_KEY for a full answer."
+            "ANTHROPIC_API_KEY is not set. Use --retrieve-only to test retrieval, "
+            "or add ANTHROPIC_API_KEY to .env for a full answer."
         )
 
     block = []
     for i, chunk in enumerate(chunks, start=1):
-        block.append(
-            f"[{i}] fund={chunk.fund_name}\n{chunk.text}"
-        )
+        block.append(f"[{i}] fund={chunk.fund_name}\n{chunk.text}")
     prompt = (
         "Answer the question using ONLY the fund-page chunks below.\n"
         "Rules:\n"
@@ -65,14 +72,16 @@ def generate_answer(question: str, chunks: list[RetrievedChunk]) -> str:
         + f"\n\nQuestion: {question}\nAnswer:"
     )
 
-    from mistralai import Mistral
+    from anthropic import Anthropic
 
-    client = Mistral(api_key=key)
-    response = client.chat.complete(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.0,
+    client = Anthropic(api_key=key)
+    response = client.messages.create(
+        model=_model_name(),
         max_tokens=180,
+        temperature=0.0,
+        messages=[{"role": "user", "content": prompt}],
     )
-    text = (response.choices[0].message.content or "").strip()
+    text = "".join(
+        block.text for block in response.content if getattr(block, "type", "") == "text"
+    ).strip()
     return _first_three_sentences(text)

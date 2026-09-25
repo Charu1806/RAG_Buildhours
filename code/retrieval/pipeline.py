@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-from .generate import generate_answer, has_mistral_key
+from .generate import generate_answer, has_llm_key
 from .guards import (
     ABSTAIN,
     ASK_FACTUAL,
@@ -138,10 +138,10 @@ def answer_question(question: str, retrieve_only: bool = False) -> Answer:
             last_updated=fetched_at,
         )
 
-    if not has_mistral_key():
+    if not has_llm_key():
         raise RuntimeError(
-            "MISTRAL_API_KEY is not set. Re-run with --retrieve-only to test "
-            "chunk retrieval, or export MISTRAL_API_KEY for a generated answer."
+            "ANTHROPIC_API_KEY is not set. Re-run with --retrieve-only to test "
+            "chunk retrieval, or add ANTHROPIC_API_KEY to .env for a generated answer."
         )
 
     text = generate_answer(question, chunks)
